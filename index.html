@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="description" content="Two stars, two planets and three moons circling each other in 3D, with sliders for every size, speed and orbit.">
+    <title>Orbits</title>
+    <link rel="icon" href="favicon.ico" sizes="32x32">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <style>
+        /* ---------- pteroscillator shared standard ---------- */
+        :root {
+            --bg: #000;
+            --surface: #0a0a0a;
+            --surface-2: #141414;
+            --line: #1a1a1a;
+            --border: #4d4d4d;
+            --border-hover: #999;
+            --text-dim: #808080;
+            --text-mid: #ccc;
+            --text: #fff;
+            --hover-bg: #0d0d0d;
+            --active-bg: #1a1a1a;
+            --danger-bg: #1a0000;
+            --danger-border: #800000;
+            --danger-text: #ff6666;
+            --danger-hover-bg: #330000;
+            --danger-hover-border: #cc0000;
+            --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            --edge: 40px;
+            --header-h: 116px;
+            --panel-top: 84px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+        }
+
+        button, input, select, a {
+            font-family: inherit;
+        }
+
+        button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+            outline: 1px solid var(--text) !important;
+            outline-offset: 2px;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: calc(var(--edge) + env(safe-area-inset-top, 0px)) calc(var(--edge) + env(safe-area-inset-right, 0px)) 0 calc(var(--edge) + env(safe-area-inset-left, 0px));
+            pointer-events: none;
+        }
+
+        .header > * {
+            pointer-events: auto;
+        }
+
+        .header.solid {
+            background: var(--bg);
+            padding-bottom: 16px;
+        }
+
+        .page-title {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+        .menu-btn {
+            display: block;
+            background: none;
+            border: none;
+            padding: 8px;
+            margin: -8px;
+            color: var(--border-hover);
+            cursor: pointer;
+            line-height: 0;
+            transition: color 0.3s;
+        }
+
+        .menu-btn:hover,
+        .menu-btn[aria-expanded="true"] {
+            color: var(--text);
+            background: none;
+        }
+
+        .menu-btn svg {
+            display: block;
+        }
+
+        .panel {
+            position: fixed;
+            z-index: 101; /* above the header bar */
+            top: calc(var(--panel-top) + env(safe-area-inset-top, 0px));
+            right: calc(var(--edge) + env(safe-area-inset-right, 0px));
+            width: 220px;
+            max-height: calc(100vh - var(--panel-top) - var(--edge));
+            max-height: calc(100dvh - var(--panel-top) - var(--edge) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--line);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .panel[hidden] {
+            display: none;
+        }
+
+        .panel::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .panel::-webkit-scrollbar-thumb {
+            background: var(--border);
+        }
+
+        .qr {
+            display: block;
+            width: 160px;
+            height: 160px;
+            margin: 0 auto;
+            flex-shrink: 0;
+        }
+
+        .panel-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--line);
+        }
+
+        .btn,
+        .btn-start,
+        .btn-small {
+            display: inline-block;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            text-transform: uppercase;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        .btn-start {
+            background: var(--bg); /* stays readable over a canvas */
+            width: 104px;
+            height: 36px;
+            padding: 0;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+
+        .btn:hover,
+        .btn-start:hover,
+        .btn-small:hover {
+            border-color: var(--border-hover);
+            background: var(--hover-bg);
+        }
+
+        .btn.active,
+        .btn-start.active,
+        .btn-small.active {
+            border-color: var(--text);
+            background: var(--active-bg);
+        }
+
+        .btn.danger {
+            background: var(--danger-bg);
+            border-color: var(--danger-border);
+            color: var(--danger-text);
+        }
+
+        .btn.danger:hover {
+            background: var(--danger-hover-bg);
+            border-color: var(--danger-hover-border);
+        }
+
+        .panel .btn {
+            width: 100%;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 28px; /* hit area */
+            margin: 0;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 1px;
+            background: var(--border);
+        }
+
+        input[type="range"]::-moz-range-track {
+            height: 1px;
+            background: var(--border);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 17px;
+            height: 17px;
+            margin-top: -8px; /* (1 - 17) / 2 */
+            border: none;
+            border-radius: 50%;
+            background: var(--text);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 17px;
+            height: 17px;
+            border: none;
+            border-radius: 50%;
+            background: var(--text);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .label {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .value {
+            font-size: 11px;
+            color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+        }
+
+        .control-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --edge: 16px;
+                --header-h: 56px;
+                --panel-top: 64px;
+            }
+
+            .header {
+                padding-top: calc(10px + env(safe-area-inset-top, 0px));
+            }
+
+            .header.solid {
+                padding-bottom: 10px;
+            }
+
+            .panel {
+                left: calc(var(--edge) + env(safe-area-inset-left, 0px));
+                width: auto;
+            }
+
+            input[type="range"] {
+                height: 44px;
+            }
+
+            input[type="range"]::-webkit-slider-thumb {
+                width: 25px;
+                height: 25px;
+                margin-top: -12px;
+            }
+
+            input[type="range"]::-moz-range-thumb {
+                width: 25px;
+                height: 25px;
+            }
+
+            .btn {
+                min-height: 40px;
+            }
+
+            .btn-small {
+                min-width: 36px;
+                min-height: 36px;
+            }
+        }
+        /* ---------- end of shared standard ---------- */
+
+        body {
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .control {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-section {
+            gap: 4px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            color: var(--text-mid);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <header class="header">
+        <div class="page-title">Orbits</div>
+        <div class="header-actions">
+            <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="panel"><svg width="28" height="28" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="currentColor"/><rect x="11" y="12.5" width="18" height="3" fill="#000"/><rect x="11" y="18.5" width="18" height="3" fill="#000"/><rect x="11" y="24.5" width="18" height="3" fill="#000"/></svg></button>
+        </div>
+    </header>
+
+    <div class="panel" id="panel" hidden>
+        <img src="pteroscillator-QRcode.svg" class="qr" width="160" height="160" alt="QR code to pteroscillator.github.io">
+
+        <div class="panel-section">
+            <div class="section-title">Star A1</div>
+            <div class="control">
+                <div class="control-head"><span class="label">Size</span><span class="value" id="size-a1-value">0.39</span></div>
+                <input type="range" id="size-a1" min="0.2" max="3" value="0.39" step="0.01">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Speed</span><span class="value" id="speed-a1-value">0.2</span></div>
+                <input type="range" id="speed-a1" min="0.1" max="3" value="0.2" step="0.1">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Orbit</span><span class="value" id="orbit-a1-value">0.5</span></div>
+                <input type="range" id="orbit-a1" min="0.5" max="5" value="0.5" step="0.1">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">Star A2</div>
+            <div class="control">
+                <div class="control-head"><span class="label">Size</span><span class="value" id="size-a2-value">0.32</span></div>
+                <input type="range" id="size-a2" min="0.2" max="3" value="0.32" step="0.01">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Speed</span><span class="value" id="speed-a2-value">0.2</span></div>
+                <input type="range" id="speed-a2" min="0.1" max="3" value="0.2" step="0.1">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Orbit</span><span class="value" id="orbit-a2-value">0.9</span></div>
+                <input type="range" id="orbit-a2" min="0.5" max="5" value="0.9" step="0.1">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">Planet B</div>
+            <div class="control">
+                <div class="control-head"><span class="label">Size</span><span class="value" id="size-b-value">0.17</span></div>
+                <input type="range" id="size-b" min="0.1" max="2" value="0.17" step="0.01">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Speed</span><span class="value" id="speed-b-value">0.6</span></div>
+                <input type="range" id="speed-b" min="0.1" max="3" value="0.6" step="0.1">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Orbit</span><span class="value" id="orbit-b-value">12.0</span></div>
+                <input type="range" id="orbit-b" min="3" max="25" value="12.0" step="0.1">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">Moon B1</div>
+            <div class="control">
+                <div class="control-head"><span class="label">Size</span><span class="value" id="size-b1-value">0.05</span></div>
+                <input type="range" id="size-b1" min="0.05" max="1" value="0.05" step="0.01">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Speed</span><span class="value" id="speed-b1-value">3.0</span></div>
+                <input type="range" id="speed-b1" min="0.1" max="5" value="3.0" step="0.1">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Orbit</span><span class="value" id="orbit-b1-value">0.7</span></div>
+                <input type="range" id="orbit-b1" min="0.5" max="3" value="0.7" step="0.1">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">Planet C</div>
+            <div class="control">
+                <div class="control-head"><span class="label">Size</span><span class="value" id="size-c-value">0.16</span></div>
+                <input type="range" id="size-c" min="0.1" max="2" value="0.16" step="0.01">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Speed</span><span class="value" id="speed-c-value">0.1</span></div>
+                <input type="range" id="speed-c" min="0.1" max="3" value="0.1" step="0.1">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Orbit</span><span class="value" id="orbit-c-value">35.0</span></div>
+                <input type="range" id="orbit-c" min="3" max="40" value="35.0" step="0.1">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">Moon C1</div>
+            <div class="control">
+                <div class="control-head"><span class="label">Size</span><span class="value" id="size-c1-value">0.04</span></div>
+                <input type="range" id="size-c1" min="0.05" max="1" value="0.04" step="0.01">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Speed</span><span class="value" id="speed-c1-value">2.5</span></div>
+                <input type="range" id="speed-c1" min="0.1" max="5" value="2.5" step="0.1">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Orbit</span><span class="value" id="orbit-c1-value">0.6</span></div>
+                <input type="range" id="orbit-c1" min="0.5" max="3" value="0.6" step="0.1">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">Moon C2</div>
+            <div class="control">
+                <div class="control-head"><span class="label">Size</span><span class="value" id="size-c2-value">0.06</span></div>
+                <input type="range" id="size-c2" min="0.05" max="1" value="0.06" step="0.01">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Speed</span><span class="value" id="speed-c2-value">1.0</span></div>
+                <input type="range" id="speed-c2" min="0.1" max="5" value="1.0" step="0.1">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Orbit</span><span class="value" id="orbit-c2-value">1.7</span></div>
+                <input type="range" id="orbit-c2" min="0.5" max="3" value="1.7" step="0.1">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">Camera</div>
+            <div class="control">
+                <div class="control-head"><span class="label">Angle</span><span class="value" id="cam-angle-value">19°</span></div>
+                <input type="range" id="cam-angle" min="0" max="90" value="19" step="1">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Distance</span><span class="value" id="cam-distance-value">4.6</span></div>
+                <input type="range" id="cam-distance" min="0.5" max="6" value="4.6" step="0.1">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">Display</div>
+            <div class="control">
+                <div class="control-head"><span class="label">Trail</span><span class="value" id="trail-value">0.36</span></div>
+                <input type="range" id="trail" min="0" max="1" value="0.36" step="0.01">
+            </div>
+            <div class="control">
+                <div class="control-head"><span class="label">Color</span><span class="value" id="body-color-value">147</span></div>
+                <input type="range" id="body-color" min="0" max="255" value="147" step="1">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <button class="btn danger" id="resetBtn">Reset</button>
+            <a class="btn exit-link" href="https://pteroscillator.github.io/">Exit</a>
+        </div>
+    </div>
+
+    <script src="three.min.js"></script>
+    <script>
+        // Three.js setup
+        let scene, camera, renderer;
+        let spheres = {};
+        let trails = {};
+        let time = 0;
+
+        // Mouse interaction state
+        let isDragging = false;
+        let lastMouseY = 0;
+
+        // Parameters
+        let params = {
+            sizeA1: 0.39,
+            sizeA2: 0.32,
+            sizeB: 0.17,
+            sizeB1: 0.05,
+            sizeC: 0.16,
+            sizeC1: 0.04,
+            sizeC2: 0.06,
+            speedA1: 0.2,
+            speedA2: 0.2,
+            speedB: 0.6,
+            speedB1: 3.0,
+            speedC: 0.1,
+            speedC1: 2.5,
+            speedC2: 1.0,
+            orbitA1: 0.5,
+            orbitA2: 0.9,
+            orbitB: 12.0,
+            orbitB1: 0.7,
+            orbitC: 35.0,
+            orbitC1: 0.6,
+            orbitC2: 1.7,
+            camAngle: 19, // degrees from ecliptic (0 = side view, 90 = top view)
+            camDistanceMultiplier: 4.6, // multiplier for planet B orbit
+            trailOpacity: 0.36,
+            bodyColor: 147 // grayscale value 0-255 (0=black, 255=white)
+        };
+
+
+        function initThree() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            // Camera distance based on planet orbit multiplier
+            const distance = params.orbitB * params.camDistanceMultiplier;
+            const angleRad = params.camAngle * Math.PI / 180;
+            camera.position.set(0, distance * Math.sin(angleRad), distance * Math.cos(angleRad));
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000);
+
+            // Create spheres with star/planet/moon sizing and appearance
+            const getColor = () => {
+                const val = params.bodyColor;
+                return (val << 16) | (val << 8) | val; // grayscale to RGB hex
+            };
+
+            const objects = {
+                a1: { size: 1.0, type: 'star' },
+                a2: { size: 0.9, type: 'star' },
+                b: { size: 0.4, type: 'planet' },
+                b1: { size: 0.15, type: 'moon' },
+                c: { size: 0.4, type: 'planet' },
+                c1: { size: 0.15, type: 'moon' },
+                c2: { size: 0.15, type: 'moon' }
+            };
+
+            Object.keys(objects).forEach(name => {
+                const obj = objects[name];
+                let size = obj.size;
+                if (name === 'a1') size = params.sizeA1;
+                if (name === 'a2') size = params.sizeA2;
+                if (name === 'b') size = params.sizeB;
+                if (name === 'b1') size = params.sizeB1;
+                if (name === 'c') size = params.sizeC;
+                if (name === 'c1') size = params.sizeC1;
+                if (name === 'c2') size = params.sizeC2;
+
+                const geometry = new THREE.SphereGeometry(size, 32, 32);
+
+                // All objects get basic material (no lighting)
+                const material = new THREE.MeshBasicMaterial({
+                    color: getColor()
+                });
+
+                const sphere = new THREE.Mesh(geometry, material);
+                scene.add(sphere);
+                spheres[name] = sphere;
+
+
+                // Create trail
+                const trailGeometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(300 * 3);
+                trailGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const trailMaterial = new THREE.LineBasicMaterial({
+                    color: getColor(),
+                    opacity: params.trailOpacity * (obj.type === 'star' ? 0.5 : 0.7),
+                    transparent: true
+                });
+                const trail = new THREE.Line(trailGeometry, trailMaterial);
+                scene.add(trail);
+                trails[name] = {
+                    mesh: trail,
+                    positions: [],
+                    maxLength: obj.type === 'moon' ? 200 : (obj.type === 'planet' ? 180 : 100),
+                    baseOpacity: obj.type === 'star' ? 0.3 : 0.6
+                };
+            });
+
+        }
+
+        function updateOrbits() {
+            time += 0.016; // ~60fps
+
+            // A1 and A2 (binary stars) orbit each other around empty gravitational center
+            const angleA1 = time * params.speedA1;
+            const angleA2 = time * params.speedA2;
+
+            spheres.a1.position.x = Math.cos(angleA1) * params.orbitA1;
+            spheres.a1.position.y = 0;
+            spheres.a1.position.z = Math.sin(angleA1) * params.orbitA1;
+
+            spheres.a2.position.x = Math.cos(angleA2 + Math.PI) * params.orbitA2;
+            spheres.a2.position.y = 0;
+            spheres.a2.position.z = Math.sin(angleA2 + Math.PI) * params.orbitA2;
+
+            // Calculate barycenter (center of mass) of binary star system
+            const centerA = new THREE.Vector3(
+                (spheres.a1.position.x + spheres.a2.position.x) / 2,
+                (spheres.a1.position.y + spheres.a2.position.y) / 2,
+                (spheres.a1.position.z + spheres.a2.position.z) / 2
+            );
+
+            // B (planet) orbits around the binary star system's barycenter
+            const radiusB = params.orbitB;
+            const angleB = time * params.speedB;
+
+            spheres.b.position.x = centerA.x + Math.cos(angleB) * radiusB;
+            spheres.b.position.y = centerA.y;
+            spheres.b.position.z = centerA.z + Math.sin(angleB) * radiusB;
+
+            // B1 (moon) orbits around planet B
+            const radiusB1 = params.orbitB1;
+            const angleB1 = time * params.speedB1;
+
+            spheres.b1.position.x = spheres.b.position.x + Math.cos(angleB1) * radiusB1;
+            spheres.b1.position.y = spheres.b.position.y;
+            spheres.b1.position.z = spheres.b.position.z + Math.sin(angleB1) * radiusB1;
+
+            // C (planet) orbits around the binary star system's barycenter
+            const radiusC = params.orbitC;
+            const angleC = time * params.speedC;
+
+            spheres.c.position.x = centerA.x + Math.cos(angleC) * radiusC;
+            spheres.c.position.y = centerA.y;
+            spheres.c.position.z = centerA.z + Math.sin(angleC) * radiusC;
+
+            // C1 (moon) orbits around planet C
+            const radiusC1 = params.orbitC1;
+            const angleC1 = time * params.speedC1;
+
+            spheres.c1.position.x = spheres.c.position.x + Math.cos(angleC1) * radiusC1;
+            spheres.c1.position.y = spheres.c.position.y;
+            spheres.c1.position.z = spheres.c.position.z + Math.sin(angleC1) * radiusC1;
+
+            // C2 (moon) orbits around planet C
+            const radiusC2 = params.orbitC2;
+            const angleC2 = time * params.speedC2;
+
+            spheres.c2.position.x = spheres.c.position.x + Math.cos(angleC2) * radiusC2;
+            spheres.c2.position.y = spheres.c.position.y;
+            spheres.c2.position.z = spheres.c.position.z + Math.sin(angleC2) * radiusC2;
+
+            // Update trails
+            Object.keys(spheres).forEach(name => {
+                const trail = trails[name];
+                let pos;
+
+                // Moon trails are relative to their planet
+                if (name === 'b1') {
+                    pos = spheres[name].position.clone().sub(spheres.b.position);
+                } else if (name === 'c1' || name === 'c2') {
+                    pos = spheres[name].position.clone().sub(spheres.c.position);
+                } else {
+                    pos = spheres[name].position.clone();
+                }
+
+                trail.positions.push(pos);
+
+                if (trail.positions.length > trail.maxLength) {
+                    trail.positions.shift();
+                }
+
+                const positions = trail.mesh.geometry.attributes.position.array;
+                for (let i = 0; i < trail.positions.length; i++) {
+                    let trailX = trail.positions[i].x;
+                    let trailY = trail.positions[i].y;
+                    let trailZ = trail.positions[i].z;
+
+                    // Add back planet position for moons
+                    if (name === 'b1') {
+                        trailX += spheres.b.position.x;
+                        trailY += spheres.b.position.y;
+                        trailZ += spheres.b.position.z;
+                    } else if (name === 'c1' || name === 'c2') {
+                        trailX += spheres.c.position.x;
+                        trailY += spheres.c.position.y;
+                        trailZ += spheres.c.position.z;
+                    }
+
+                    positions[i * 3] = trailX;
+                    positions[i * 3 + 1] = trailY;
+                    positions[i * 3 + 2] = trailZ;
+                }
+                trail.mesh.geometry.attributes.position.needsUpdate = true;
+                trail.mesh.geometry.setDrawRange(0, trail.positions.length);
+            });
+
+            // Camera fixed at angle, distance based on planet orbit multiplier
+            const camDistance = params.orbitB * params.camDistanceMultiplier;
+            const angleRad = params.camAngle * Math.PI / 180;
+
+            camera.position.x = 0;
+            camera.position.y = camDistance * Math.sin(angleRad);
+            camera.position.z = camDistance * Math.cos(angleRad);
+            camera.lookAt(centerA);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updateOrbits();
+            renderer.render(scene, camera);
+        }
+
+
+        // Event listeners for sliders
+        // Size controls
+        ['a1', 'a2', 'b', 'b1', 'c', 'c1', 'c2'].forEach(name => {
+            const slider = document.getElementById(`size-${name}`);
+            const display = document.getElementById(`size-${name}-value`);
+
+            slider.addEventListener('input', (e) => {
+                const size = parseFloat(e.target.value);
+                params[`size${name.toUpperCase()}`] = size;
+                display.textContent = size.toFixed(2);
+
+                // Update sphere geometry
+                const newGeometry = new THREE.SphereGeometry(size, 32, 32);
+                spheres[name].geometry.dispose();
+                spheres[name].geometry = newGeometry;
+            });
+        });
+
+        // Speed controls
+        ['a1', 'a2', 'b', 'b1', 'c', 'c1', 'c2'].forEach(name => {
+            const slider = document.getElementById(`speed-${name}`);
+            const display = document.getElementById(`speed-${name}-value`);
+
+            slider.addEventListener('input', (e) => {
+                const speed = parseFloat(e.target.value);
+                params[`speed${name.toUpperCase()}`] = speed;
+                display.textContent = speed.toFixed(1);
+            });
+        });
+
+        // Orbit distance controls
+        ['a1', 'a2', 'b', 'b1', 'c', 'c1', 'c2'].forEach(name => {
+            const slider = document.getElementById(`orbit-${name}`);
+            const display = document.getElementById(`orbit-${name}-value`);
+
+            slider.addEventListener('input', (e) => {
+                const orbit = parseFloat(e.target.value);
+                params[`orbit${name.toUpperCase()}`] = orbit;
+                display.textContent = orbit.toFixed(1);
+            });
+        });
+
+        // Camera angle control
+        document.getElementById('cam-angle').addEventListener('input', (e) => {
+            const angle = parseFloat(e.target.value);
+            params.camAngle = angle;
+            document.getElementById('cam-angle-value').textContent = angle + '°';
+        });
+
+        // Camera distance control
+        document.getElementById('cam-distance').addEventListener('input', (e) => {
+            const distance = parseFloat(e.target.value);
+            params.camDistanceMultiplier = distance;
+            document.getElementById('cam-distance-value').textContent = distance.toFixed(1);
+        });
+
+        // Mouse wheel for zoom
+        document.addEventListener('wheel', (e) => {
+            if (panel.contains(e.target)) return; // let the panel scroll
+            e.preventDefault();
+            const delta = e.deltaY * 0.001;
+            params.camDistanceMultiplier = Math.max(0.5, Math.min(5, params.camDistanceMultiplier + delta));
+            document.getElementById('cam-distance').value = params.camDistanceMultiplier;
+            document.getElementById('cam-distance-value').textContent = params.camDistanceMultiplier.toFixed(1);
+        }, { passive: false });
+
+        // Mouse drag for camera angle
+        document.addEventListener('mousedown', (e) => {
+            if (panel.contains(e.target) || menuBtn.contains(e.target)) return; // sliders and menu are not the camera
+            if (e.button === 0) { // Left click
+                isDragging = true;
+                lastMouseY = e.clientY;
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaY = e.clientY - lastMouseY;
+                lastMouseY = e.clientY;
+
+                // Moving mouse up (negative deltaY) increases angle, moving down decreases
+                const sensitivity = 0.3;
+                params.camAngle = Math.max(0, Math.min(90, params.camAngle - deltaY * sensitivity));
+
+                document.getElementById('cam-angle').value = params.camAngle;
+                document.getElementById('cam-angle-value').textContent = Math.round(params.camAngle) + '°';
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (e.button === 0) {
+                isDragging = false;
+            }
+        });
+
+        // Trail opacity control
+        document.getElementById('trail').addEventListener('input', (e) => {
+            const opacity = parseFloat(e.target.value);
+            params.trailOpacity = opacity;
+            document.getElementById('trail-value').textContent = opacity.toFixed(2);
+            Object.keys(trails).forEach(name => {
+                const trail = trails[name];
+                trail.mesh.material.opacity = opacity * trail.baseOpacity;
+            });
+        });
+
+        // Body color control
+        document.getElementById('body-color').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            params.bodyColor = val;
+            document.getElementById('body-color-value').textContent = val;
+            const color = (val << 16) | (val << 8) | val;
+
+            // Update all sphere colors
+            Object.keys(spheres).forEach(name => {
+                spheres[name].material.color.setHex(color);
+            });
+
+            // Update all trail colors
+            Object.keys(trails).forEach(name => {
+                trails[name].mesh.material.color.setHex(color);
+            });
+        });
+
+        // Window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Menu panel: icon toggles, click outside or Escape closes
+        const menuBtn = document.getElementById('menuBtn');
+        const panel = document.getElementById('panel');
+
+        function setPanel(open) {
+            panel.hidden = !open;
+            menuBtn.setAttribute('aria-expanded', String(open));
+        }
+
+        menuBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            setPanel(panel.hidden);
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!panel.hidden && !panel.contains(e.target)) setPanel(false);
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !panel.hidden) setPanel(false);
+        });
+
+        // Reset: every slider back to its starting value
+        const initialSliders = Array.from(panel.querySelectorAll('input[type="range"]')).map(function(input) {
+            return [input, input.value];
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            initialSliders.forEach(function([input, value]) {
+                input.value = value;
+                input.dispatchEvent(new Event('input'));
+            });
+        });
+
+        // Initialize
+        initThree();
+        animate();
+    </script>
+
+</body>
+</html>
